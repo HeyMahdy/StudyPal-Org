@@ -1,52 +1,110 @@
-import { ArcElement, Chart as ChartJS, Legend, Tooltip } from 'chart.js';
-import { Trash2 } from 'lucide-react';
+import { ArrowRight, DollarSign, ReceiptText, WalletCards } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Doughnut } from 'react-chartjs-2';
-import Button from '../components/ui/Button';
+import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
 import api from '../services/api';
-import { currency, today } from '../utils/format';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+const money = (value) => new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', maximumFractionDigits: 0 }).format(Number(value || 0));
+const currentMonth = () => new Date().toISOString().slice(0, 7);
+
+const modules = [
+  {
+    title: 'Budget Management',
+    description: 'Set and track monthly budgets',
+    button: 'Open Budget',
+    to: '/finance/budget',
+    icon: WalletCards
+  },
+  {
+    title: 'Expense Tracking',
+    description: 'Track daily spending',
+    button: 'Open Expenses',
+    to: '/finance/expenses',
+    icon: DollarSign
+  },
+  {
+    title: 'Bill Reminders',
+    description: 'Manage upcoming payments',
+    button: 'Open Bills',
+    to: '/finance/bills',
+    icon: ReceiptText
+  }
+];
 
 export default function Finance() {
-  const [data, setData] = useState({ expenses: [], summary: [] });
-  const [form, setForm] = useState({ title: '', amount: '', category: 'Food', spent_at: today() });
-  const load = () => api.get('/expenses').then((res) => setData(res.data));
-  useEffect(() => { load(); }, []);
+  const navigate = useNavigate();
+  const [overview, setOverview] = useState({ totalBudget: 0, totalExpenses: 0, remainingMoney: 0, pendingBills: 0 });
 
-  const create = async (e) => {
-    e.preventDefault();
-    await api.post('/expenses', form);
-    setForm({ title: '', amount: '', category: 'Food', spent_at: today() });
-    load();
-  };
+  useEffect(() => {
+    const month = currentMonth();
+    Promise.all([
+      api.get(`/budget?month=${month}`),
+      api.get(`/expenses?month=${month}`),
+      api.get('/bills')
+    ]).then(([budgetRes, expenseRes, billRes]) => {
+      const totalBudget = budgetRes.data.budget.total_budget;
+      const totalExpenses = expenseRes.data.overview.total_month;
+      setOverview({
+        totalBudget,
+        totalExpenses,
+        remainingMoney: totalBudget - totalExpenses,
+        pendingBills: billRes.data.bills.filter((bill) => bill.status === 'pending').length
+      });
+    });
+  }, []);
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-3xl font-bold">Finance</h1>
-      <Card>
-        <form onSubmit={create} className="grid gap-3 md:grid-cols-[1fr_140px_160px_180px_auto]">
-          <Input label="Expense" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-          <Input label="Amount" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-          <label className="grid gap-2 text-sm font-medium">Category<select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Food', 'Books', 'Transport', 'Rent', 'Health', 'Other'].map((x) => <option key={x}>{x}</option>)}</select></label>
-          <Input label="Date" type="date" value={form.spent_at} onChange={(e) => setForm({ ...form, spent_at: e.target.value })} required />
-          <Button className="self-end">Add</Button>
-        </form>
-      </Card>
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        <Card>
-          <h2 className="text-xl font-bold">Monthly summary</h2>
-          <div className="mt-5 h-72">
-            <Doughnut data={{ labels: data.summary.map((x) => x.category), datasets: [{ data: data.summary.map((x) => x.total), backgroundColor: ['#4F46E5', '#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#64748B'] }] }} options={{ maintainAspectRatio: false }} />
-          </div>
-        </Card>
-        <Card>
-          <h2 className="text-xl font-bold">Expenses</h2>
-          <div className="mt-4 grid gap-3">{data.expenses.map((expense) => <div key={expense.id} className="flex items-center justify-between rounded-2xl border border-slate-200 p-3 dark:border-gray-800"><div><b>{expense.title}</b><p className="text-sm text-gray-500">{expense.category} · {expense.spent_at}</p></div><div className="flex items-center gap-3"><b>{currency(expense.amount)}</b><button onClick={() => api.delete(`/expenses/${expense.id}`).then(load)}><Trash2 size={16} /></button></div></div>)}</div>
-        </Card>
+      <div>
+        <h1 className="text-3xl font-bold">Finance</h1>
+        <p className="text-gray-500 dark:text-gray-400">Your student money control center.</p>
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Total Budget" value={money(overview.totalBudget)} />
+        <Metric label="Total Expenses" value={money(overview.totalExpenses)} tone="text-red-600 dark:text-red-300" />
+        <Metric label="Remaining Money" value={money(overview.remainingMoney)} tone={overview.remainingMoney < 0 ? 'text-red-600 dark:text-red-300' : 'text-emerald-600 dark:text-emerald-300'} />
+        <Metric label="Pending Bills" value={overview.pendingBills} tone={overview.pendingBills ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'} />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        {modules.map(({ title, description, button, to, icon: Icon }) => (
+          <Card
+            key={to}
+            className="cursor-pointer transition duration-200 hover:-translate-y-1 hover:shadow-soft"
+            onClick={() => navigate(to)}
+          >
+            <div className="flex h-full min-h-56 flex-col justify-between gap-8">
+              <div>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-50 text-primary dark:bg-indigo-950">
+                  <Icon size={24} />
+                </div>
+                <h2 className="mt-5 text-2xl font-bold">{title}</h2>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{description}</p>
+              </div>
+              <button
+                className="btn-primary w-full"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(to);
+                }}
+              >
+                {button}
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
+  );
+}
+
+function Metric({ label, value, tone = 'text-gray-950 dark:text-white' }) {
+  return (
+    <Card>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+      <p className={`mt-2 text-2xl font-bold ${tone}`}>{value}</p>
+    </Card>
   );
 }

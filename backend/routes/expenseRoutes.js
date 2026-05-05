@@ -5,7 +5,7 @@ const { requireFields } = require('../middleware/validators');
 const router = express.Router();
 
 router.get('/', controller.listExpenses);
-router.post('/', requireFields(['title', 'amount', 'category', 'spent_at']), controller.createExpense);
+router.post('/', requireFields(['amount', 'category']), controller.createExpense);
 router.delete('/:id', controller.deleteExpense);
 
 module.exports = router;
