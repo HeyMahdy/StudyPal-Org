@@ -86,6 +86,28 @@ async function initDb() {
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
   await ensureExpenseColumns();
+  await run(`CREATE TABLE IF NOT EXISTS ai_expenses (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    original_currency TEXT DEFAULT 'BDT',
+    item TEXT NOT NULL,
+    vendor TEXT,
+    location TEXT,
+    category TEXT NOT NULL,
+    sub_category TEXT,
+    is_academic INTEGER DEFAULT 0,
+    academic_reason TEXT,
+    is_exam_week INTEGER DEFAULT 0,
+    expense_date TEXT NOT NULL,
+    raw_input TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+  await run('CREATE INDEX IF NOT EXISTS idx_ai_expenses_user ON ai_expenses (user_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_ai_expenses_date ON ai_expenses (expense_date)');
+  await run('CREATE INDEX IF NOT EXISTS idx_ai_expenses_category ON ai_expenses (category)');
+  await run('CREATE INDEX IF NOT EXISTS idx_ai_expenses_is_academic ON ai_expenses (is_academic)');
   await run(`CREATE TABLE IF NOT EXISTS budgets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

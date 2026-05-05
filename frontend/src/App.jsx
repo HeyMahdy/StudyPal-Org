@@ -10,6 +10,7 @@ import Finance from './pages/Finance';
 import FinanceBills from './pages/FinanceBills';
 import FinanceBudget from './pages/FinanceBudget';
 import FinanceExpenses from './pages/FinanceExpenses';
+import FinanceAIExpenses from './pages/FinanceAIExpenses';
 import HabitCreate from './pages/HabitCreate';
 import HabitDetail from './pages/HabitDetail';
 import Habits from './pages/Habits';
@@ -41,6 +42,7 @@ export default function App() {
                 <Route path="/finance" element={<Finance />} />
                 <Route path="/finance/budget" element={<FinanceBudget />} />
                 <Route path="/finance/expenses" element={<FinanceExpenses />} />
+                <Route path="/finance/ai-expenses" element={<FinanceAIExpenses />} />
                 <Route path="/finance/bills" element={<FinanceBills />} />
                 <Route path="/habits" element={<Habits />} />
                 <Route path="/habits/new" element={<HabitCreate />} />

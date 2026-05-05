@@ -1,7 +1,7 @@
 import json
 import os
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -9,6 +9,14 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import ToolMessage
 
 from service.s3TextractService import upload_note_to_s3, analyze_note_from_s3
+from expense_agent import (
+    ExpenseAgent,
+    ClarificationNeeded,
+    ExpenseCategorizationError,
+    ExpenseParseError,
+    ExpenseSaveError,
+    ReceiptExtractionError,
+)
 from agent import studypal_graph
 
 # Load environment variables
@@ -27,6 +35,14 @@ app.add_middleware(
 # Request Model for Textract
 class AnalyzeRequest(BaseModel):
     s3_key: str
+
+
+class ExpenseTextRequest(BaseModel):
+    text: str
+    user_id: str | None = None
+
+
+agent = ExpenseAgent()
 
 @app.post("/upload-note/")
 async def upload_note(file: UploadFile = File(...)):
@@ -112,6 +128,38 @@ async def analyze_note(request: AnalyzeRequest):
         "status": "success",
         "final_output": structured_output,
     }
+
+
+@app.post("/expense/text")
+async def expense_text(request: ExpenseTextRequest, authorization: str | None = Header(None)):
+    try:
+        saved = agent.process_text(request.text, auth_token=authorization)
+        return {"status": "success", "expense": saved}
+    except ClarificationNeeded as err:
+        return {"clarification_needed": True, "question": err.question}
+    except (ExpenseParseError, ExpenseCategorizationError, ExpenseSaveError) as err:
+        return {"status": "DOWN", "error": str(err)}
+
+
+@app.post("/expense/receipt")
+async def expense_receipt(
+    file: UploadFile = File(...),
+    user_id: str | None = Form(None),
+    authorization: str | None = Header(None)
+):
+    try:
+        upload_result = upload_note_to_s3(file)
+        if upload_result.get("status") != "success":
+            return {"status": "DOWN", "error": upload_result.get("error", "Upload failed")}
+
+        saved = agent.process_receipt(upload_result["s3_key"], auth_token=authorization)
+        return {"status": "success", "expense": saved}
+    except ClarificationNeeded as err:
+        return {"clarification_needed": True, "question": err.question}
+    except ReceiptExtractionError as err:
+        return {"status": "DOWN", "error": str(err)}
+    except (ExpenseParseError, ExpenseCategorizationError, ExpenseSaveError) as err:
+        return {"status": "DOWN", "error": str(err)}
 
 if __name__ == "__main__":
     import uvicorn
