@@ -1,44 +1,28 @@
-import boto3
-import os
-import uuid
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
+from service.s3TextractService import upload_note_to_s3, analyze_note_from_s3
+
+# Load environment variables
 load_dotenv()
-app = FastAPI()
 
-s3_client = boto3.client(
-    "s3",
-    aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
-    aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY"),
-    region_name=os.getenv("AWS_REGION")
-)
+app = FastAPI(title="StudyPal Agent API")
 
-BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+# Request Model for Textract
+class AnalyzeRequest(BaseModel):
+    s3_key: str
 
 @app.post("/upload-note/")
 async def upload_note(file: UploadFile = File(...)):
-    # Rule: Use a UUID to prevent overwriting files in your 'notes' folder
-    unique_filename = f"{uuid.uuid4()}-{file.filename}"
-    file_key = f"notes/{unique_filename}" 
+    """Uploads an image or PDF to the S3 'notes' directory."""
+    return upload_note_to_s3(file)
 
-    try:
-        s3_client.upload_fileobj(
-            file.file, 
-            BUCKET_NAME, 
-            file_key,
-            ExtraArgs={"ContentType": file.content_type}
-        )
+@app.post("/analyze-note/")
+async def analyze_note(request: AnalyzeRequest):
+    """Reads the S3 file using Textract and returns extracted text."""
+    return analyze_note_from_s3(request.s3_key)
 
-        # This URL is what you'll pass to your frontend or AI service
-        file_url = f"https://{BUCKET_NAME}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{file_key}"
-
-        return {
-            "status": "success",
-            "s3_key": file_key,
-            "url": file_url
-        }
-
-    except Exception as e:
-        # Standardized error response for your observability engine
-        return {"status": "DOWN", "error": str(e)}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
