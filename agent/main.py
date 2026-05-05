@@ -88,6 +88,9 @@ async def analyze_note(request: AnalyzeRequest):
                 title = item.get("title")
                 url = item.get("link")
                 if title and url:
+                    lowered_url = url.lower()
+                    if "youtube.com" in lowered_url or "youtu.be" in lowered_url:
+                        continue
                     web_links.append({"title": title, "url": url})
 
     structured_output = {

@@ -1,10 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:wght@400;600;700&family=Geist:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Geist, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --paper: #f5f0e8;
+  --ink: #0f0e0d;
+  --accent: #c84b2f;
+  --border: #c8b89a;
 }
 
 .dark {
@@ -13,7 +19,8 @@
 
 body {
   margin: 0;
-  background: #f3f4f6;
+  background: var(--paper);
+  color: var(--ink);
 }
 
 .dark body {
@@ -38,18 +45,403 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-card border border-slate-200 bg-white p-5 shadow-soft transition duration-200 hover:-translate-y-0.5 dark:border-gray-800 dark:bg-gray-900;
+    @apply rounded-3xl border p-5 transition duration-200;
+    border-color: var(--border);
+    background: #fbf7f1;
   }
 
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none ring-primary/20 focus:ring-4 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100;
+    @apply w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2;
+    border-color: var(--border);
+    background: #fffaf2;
+    color: var(--ink);
+    box-shadow: none;
+    ring-color: rgba(200, 75, 47, 0.2);
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition;
+    background: var(--accent);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-gray-800 transition hover:bg-slate-200 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition;
+    border-color: var(--border);
+    background: #fff2df;
+    color: var(--ink);
+  }
+}
+
+.notes-page {
+  display: grid;
+  gap: 32px;
+}
+
+.notes-header {
+  display: grid;
+  gap: 8px;
+}
+
+.notes-kicker {
+  font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 12px;
+  color: rgba(15, 14, 13, 0.7);
+}
+
+.notes-title {
+  font-family: "Fraunces", serif;
+  font-size: 36px;
+  margin: 0;
+}
+
+.notes-subtitle {
+  max-width: 600px;
+  color: rgba(15, 14, 13, 0.75);
+}
+
+.notes-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  gap: 24px;
+}
+
+.notes-sidebar,
+.notes-main,
+.notes-aside {
+  display: grid;
+  gap: 20px;
+}
+
+.notes-sidebar {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  height: fit-content;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: #fbf7f1;
+}
+
+.notes-sidebar-head {
+  display: grid;
+  gap: 12px;
+}
+
+.notes-label {
+  font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  color: rgba(15, 14, 13, 0.7);
+}
+
+.notes-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.notes-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  background: #fffaf2;
+  text-align: left;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.notes-item:hover {
+  border-color: var(--accent);
+  transform: translateX(2px);
+}
+
+.notes-item-active {
+  border-color: var(--accent);
+  border-left: 4px solid var(--accent);
+}
+
+.notes-item-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.notes-item-date {
+  font-size: 12px;
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.notes-main {
+  gap: 24px;
+}
+
+.notes-upload,
+.notes-output,
+.notes-tutor {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 20px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 16px;
+}
+
+.notes-upload-head,
+.notes-output-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.notes-section-title {
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  margin: 6px 0 0;
+}
+
+.notes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.notes-status {
+  font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(15, 14, 13, 0.7);
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notes-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(200, 75, 47, 0.25);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: notes-spin 0.8s linear infinite;
+}
+
+@keyframes notes-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.notes-dropzone {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 2px dashed var(--border);
+  border-radius: 20px;
+  background: #fffaf2;
+  cursor: pointer;
+  position: relative;
+}
+
+.notes-file {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.notes-drop-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.notes-drop-sub {
+  margin: 0;
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.notes-drop-file {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: rgba(15, 14, 13, 0.8);
+}
+
+.notes-error {
+  color: #b42318;
+  background: #fef3f2;
+  padding: 12px 16px;
+  border-radius: 14px;
+}
+
+.notes-render {
+  background: #fffaf2;
+  border-radius: 18px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+.notes-render h2,
+.notes-render h3 {
+  font-family: "Fraunces", serif;
+  margin-top: 20px;
+}
+
+.notes-render table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.notes-render th,
+.notes-render td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.notes-placeholder {
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.notes-tutor-form {
+  display: grid;
+  gap: 12px;
+}
+
+.notes-tutor-input {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  font-size: 14px;
+  background: #fffaf2;
+  color: var(--ink);
+}
+
+.notes-tutor-reply {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fff2df;
+  border-radius: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+}
+
+.notes-aside {
+  align-self: start;
+}
+
+.notes-sticky {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 20px;
+}
+
+.notes-aside-section {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 18px;
+  background: #fbf7f1;
+  display: grid;
+  gap: 12px;
+}
+
+.notes-aside-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  color: rgba(15, 14, 13, 0.7);
+}
+
+.notes-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.notes-media,
+.notes-resource {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #fffaf2;
+  color: inherit;
+}
+
+.notes-media-thumb {
+  width: 64px;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f0e6d6;
+  display: grid;
+  place-items: center;
+}
+
+.notes-media-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.notes-resource-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fdf6ec;
+  display: grid;
+  place-items: center;
+}
+
+.notes-resource-icon img {
+  width: 20px;
+  height: 20px;
+}
+
+.notes-media-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.notes-media-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.notes-empty {
+  color: rgba(15, 14, 13, 0.6);
+  font-size: 13px;
+}
+
+@media (max-width: 1200px) {
+  .notes-shell {
+    grid-template-columns: 1fr;
+  }
+  .notes-sidebar,
+  .notes-aside {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-spinner {
+    animation: none;
   }
 }
