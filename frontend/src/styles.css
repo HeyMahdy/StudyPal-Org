@@ -11,6 +11,7 @@
   --ink: #0f0e0d;
   --accent: #c84b2f;
   --border: #c8b89a;
+  --color-text-tertiary: rgba(15, 14, 13, 0.55);
 }
 
 .dark {
@@ -191,6 +192,11 @@ body {
   gap: 16px;
 }
 
+.notes-history-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .notes-upload-head,
 .notes-output-head {
   display: flex;
@@ -285,6 +291,29 @@ body {
   border-radius: 18px;
   padding: 20px;
   border: 1px solid var(--border);
+  min-height: 180px;
+}
+
+.notes-glossary {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  background: #fffaf2;
+  display: grid;
+  gap: 12px;
+}
+
+.notes-glossary-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.notes-glossary-item {
+  display: grid;
+  gap: 4px;
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  font-size: 14px;
 }
 
 .notes-render h2,
@@ -307,7 +336,7 @@ body {
 }
 
 .notes-placeholder {
-  color: rgba(15, 14, 13, 0.6);
+  color: var(--color-text-tertiary);
 }
 
 .notes-tutor-form {
