@@ -76,13 +76,13 @@ class ExpenseAgent:
     def run_categorization_agent(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
         system_prompt = self._categorization_prompt()
         user_payload = json.dumps(parsed)
-        raw_response = self._call_openai(system_prompt, user_payload)
+        raw_response = self._call_openai(system_prompt, user_payload, json_mode=True)
         logger.info('Agent 2 raw response: %s', raw_response)
 
         try:
             categorized = json.loads(raw_response.strip())
         except json.JSONDecodeError:
-            retry_response = self._call_openai(system_prompt, user_payload)
+            retry_response = self._call_openai(system_prompt, user_payload, json_mode=True)
             logger.info('Agent 2 retry response: %s', retry_response)
             try:
                 categorized = json.loads(retry_response.strip())
@@ -149,9 +149,20 @@ class ExpenseAgent:
         saved = self.save_expense(categorized, auth_token=auth_token)
         return saved
 
-    def _call_openai(self, system_prompt: str, user_content: str) -> str:
+    def _call_openai(self, system_prompt: str, user_content: str, json_mode: bool = False) -> str:
         if not self.openai_api_key:
             raise ExpenseParseError('OPENAI_API_KEY is not configured.')
+
+        payload: Dict[str, Any] = {
+            'model': self.openai_model,
+            'temperature': 0.2,
+            'messages': [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_content}
+            ]
+        }
+        if json_mode:
+            payload['response_format'] = {'type': 'json_object'}
 
         response = requests.post(
             OPENAI_URL,
@@ -159,14 +170,7 @@ class ExpenseAgent:
                 'Authorization': f"Bearer {self.openai_api_key}",
                 'Content-Type': 'application/json'
             },
-            json={
-                'model': self.openai_model,
-                'temperature': 0.2,
-                'messages': [
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': user_content}
-                ]
-            },
+            json=payload,
             timeout=30
         )
         response.raise_for_status()
