@@ -1,4 +1,4 @@
-import { ArrowRight, DollarSign, ReceiptText, WalletCards } from 'lucide-react';
+import { ArrowRight, Brain, DollarSign, ReceiptText, WalletCards } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
@@ -14,6 +14,13 @@ const modules = [
     button: 'Open Budget',
     to: '/finance/budget',
     icon: WalletCards
+  },
+  {
+    title: 'AI Expense Capture',
+    description: 'Parse receipts or text with the agent',
+    button: 'Open AI Expenses',
+    to: '/finance/ai-expenses',
+    icon: Brain
   },
   {
     title: 'Expense Tracking',

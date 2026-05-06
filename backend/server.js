@@ -43,6 +43,7 @@ app.use('/api/events', requireAuth, require('./routes/eventRoutes'));
 app.use('/api/budget', requireAuth, require('./routes/budgetRoutes'));
 app.use('/api/bills', requireAuth, require('./routes/billRoutes'));
 app.use('/api/expenses', requireAuth, require('./routes/expenseRoutes'));
+app.use('/api/ai-expenses', requireAuth, require('./routes/aiExpenseRoutes'));
 app.use('/api/finance', requireAuth, require('./routes/financeRoutes'));
 app.use('/api/habits', requireAuth, require('./routes/habitRoutes'));
 app.use('/api/ai', requireAuth, require('./routes/aiRoutes'));
