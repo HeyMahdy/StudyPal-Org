@@ -80,7 +80,7 @@ async function initDb() {
     category TEXT NOT NULL,
     description TEXT DEFAULT '',
     date TEXT,
-    type TEXT CHECK(type IN ('expense','income')) DEFAULT 'expense',
+    type TEXT CHECK(type IN ('expense','income','transfer')) DEFAULT 'expense',
     spent_at TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -160,7 +160,7 @@ async function ensureExpenseColumns() {
     ['title', "ALTER TABLE expenses ADD COLUMN title TEXT DEFAULT 'Expense'"],
     ['description', "ALTER TABLE expenses ADD COLUMN description TEXT DEFAULT ''"],
     ['date', 'ALTER TABLE expenses ADD COLUMN date TEXT'],
-    ['type', "ALTER TABLE expenses ADD COLUMN type TEXT CHECK(type IN ('expense','income')) DEFAULT 'expense'"],
+    ['type', "ALTER TABLE expenses ADD COLUMN type TEXT CHECK(type IN ('expense','income','transfer')) DEFAULT 'expense'"],
     ['spent_at', 'ALTER TABLE expenses ADD COLUMN spent_at TEXT']
   ];
 

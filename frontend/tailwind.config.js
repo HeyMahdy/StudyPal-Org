@@ -8,6 +8,9 @@ export default {
         accent: '#7C3AED',
         appdark: '#0F172A'
       },
+      fontFamily: {
+        serif: ['Fraunces', 'serif']
+      },
       borderRadius: {
         card: '22px'
       },

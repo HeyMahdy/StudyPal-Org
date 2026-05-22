@@ -128,12 +128,16 @@ async function listExpenses(req, res, next) {
 
     const expenses = await all(`SELECT * FROM expenses ${where} ORDER BY date DESC, created_at DESC LIMIT 80`, params);
     const daily = await all(
-      `SELECT date, SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END) as net, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as spent
+      `SELECT date,
+        SUM(CASE WHEN type = 'income' THEN amount WHEN type = 'expense' THEN -amount ELSE 0 END) as net,
+        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as spent
        FROM expenses WHERE user_id = ? GROUP BY date ORDER BY date DESC LIMIT 14`,
       [req.user.id]
     );
     const weekly = await all(
-      `SELECT strftime('%Y-W%W', date) as week, SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END) as net, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as spent
+      `SELECT strftime('%Y-W%W', date) as week,
+        SUM(CASE WHEN type = 'income' THEN amount WHEN type = 'expense' THEN -amount ELSE 0 END) as net,
+        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as spent
        FROM expenses WHERE user_id = ? GROUP BY week ORDER BY week DESC LIMIT 8`,
       [req.user.id]
     );
