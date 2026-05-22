@@ -1,22 +1,183 @@
 const axios = require('axios');
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const MAX_CONTEXT_CHARS = 8000;
+const MAX_MESSAGE_CHARS = 2000;
+const REQUEST_TIMEOUT = 15000; // 15 seconds
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
 
+/**
+ * Sleep for specified milliseconds
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Call Gemini API with retry logic and timeout
+ * Gracefully falls back if API is unavailable
+ */
 async function askGemini(prompt) {
   const key = process.env.GEMINI_API_KEY;
   if (!key || key === 'your_gemini_api_key') {
-    return 'Gemini is not configured yet. Add GEMINI_API_KEY in backend/.env to enable live AI responses.';
+    return 'AI responses are disabled. Please configure GEMINI_API_KEY to enable live AI features.';
   }
 
-  const response = await axios.post(`${GEMINI_URL}?key=${key}`, {
-    contents: [{ parts: [{ text: prompt }] }]
-  });
+  let lastError = null;
 
-  return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+  // Retry logic for transient failures
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await axios.post(`${GEMINI_URL}?key=${key}`, {
+        contents: [{ parts: [{ text: prompt }] }]
+      }, {
+        timeout: REQUEST_TIMEOUT
+      });
+
+      const reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (reply) {
+        return reply;
+      }
+
+      return 'Unable to generate a response. Please try again.';
+    } catch (err) {
+      lastError = err;
+      const status = err.response?.status;
+      const message = err.message;
+
+      // Log attempt
+      if (attempt < MAX_RETRIES) {
+        console.warn(
+          `[StudyPal] Gemini API attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${status || message}). Retrying in ${RETRY_DELAY}ms...`
+        );
+      }
+
+      // Retry on transient errors (503, 429, timeout)
+      if (attempt < MAX_RETRIES && (status === 503 || status === 429 || message.includes('timeout'))) {
+        await sleep(RETRY_DELAY);
+        continue;
+      }
+
+      // Don't retry on client errors (400, 401, 403, 404)
+      if (status >= 400 && status < 500) {
+        console.error(`[StudyPal] Gemini API client error (${status}):`, message);
+        break;
+      }
+
+      // On last attempt or permanent error, break
+      break;
+    }
+  }
+
+  // Graceful fallback on all retries exhausted
+  if (lastError) {
+    const status = lastError.response?.status;
+    const message = lastError.message;
+
+    if (status === 503 || status === 429) {
+      console.error(
+        `[StudyPal] Gemini API unavailable after ${MAX_RETRIES + 1} attempts. Service may be overloaded.`
+      );
+      return 'The AI service is temporarily unavailable due to high demand. Please try again in a few moments.';
+    }
+
+    if (message.includes('timeout')) {
+      console.error('[StudyPal] Gemini API request timed out after', REQUEST_TIMEOUT, 'ms');
+      return 'The AI request timed out. Please try again with a shorter message.';
+    }
+
+    console.error('[StudyPal] Gemini API error:', message);
+    return 'An error occurred while processing your request. Please try again.';
+  }
+
+  return 'Unable to reach the AI service. Please try again later.';
+}
+
+/**
+ * Sanitize and validate context notes
+ * @param {*} contextNotes - Raw context notes from request
+ * @returns {Array} - Safe array of notes with validated fields
+ */
+function sanitizeContextNotes(contextNotes) {
+  // Ensure contextNotes is an array
+  if (!Array.isArray(contextNotes)) {
+    return [];
+  }
+
+  // Filter and sanitize each note
+  return contextNotes
+    .filter((note) => note && typeof note === 'object')
+    .map((note) => ({
+      title: typeof note.title === 'string' ? note.title.trim() : 'Untitled Note',
+      content: typeof note.content === 'string' ? note.content.trim() : ''
+    }))
+    .filter((note) => note.title || note.content);
+}
+
+/**
+ * Build a context-aware prompt that safely injects notes
+ * Includes input validation, sanitization, and size limits
+ * @param {string} message - User's message/query
+ * @param {Array} contextNotes - Array of notes with {id, title, content}
+ * @returns {string} - Formatted prompt for Gemini
+ */
+function buildContextPrompt(message, contextNotes = []) {
+  try {
+    // Validate and sanitize message
+    if (typeof message !== 'string') {
+      message = String(message);
+    }
+    message = message.trim().slice(0, MAX_MESSAGE_CHARS);
+
+    if (!message) {
+      return 'You are StudyPal. Please ask a question.';
+    }
+
+    // Sanitize context notes
+    const safeNotes = sanitizeContextNotes(contextNotes);
+
+    // Build context text with size limit
+    let contextText = '';
+    if (safeNotes.length > 0) {
+      contextText = safeNotes
+        .map((note) => `TITLE: ${note.title}\nCONTENT: ${note.content}`)
+        .join('\n\n---\n\n')
+        .slice(0, MAX_CONTEXT_CHARS);
+    }
+
+    // Return appropriate prompt based on context availability
+    if (contextText.length > 0) {
+      return `You are StudyPal, a focused study assistant.
+
+Use ONLY the provided notes to answer the question. Be specific and cite relevant details from the notes. Do not add information outside the notes.
+
+STUDY NOTES:
+${contextText}
+
+---
+
+USER QUESTION:
+${message}
+
+Answer clearly and concisely, based only on the notes provided.`;
+    }
+
+    // Fallback to generic prompt if no context
+    return `You are StudyPal, a focused study assistant. Answer clearly and concisely.\n\nUser: ${message}`;
+  } catch (err) {
+    console.error('[StudyPal] Error building context prompt:', err.message);
+    // Fallback: return safe minimal prompt
+    return `You are StudyPal. User asked: ${String(message || '').slice(0, 500)}`;
+  }
 }
 
 function makeFlashcardPrompt(text) {
+  if (typeof text !== 'string') {
+    text = String(text || '');
+  }
+  text = text.trim().slice(0, MAX_CONTEXT_CHARS);
   return `Create concise study flashcards from this material. Return JSON array with front and back fields only:\n\n${text}`;
 }
 
-module.exports = { askGemini, makeFlashcardPrompt };
+module.exports = { askGemini, buildContextPrompt, sanitizeContextNotes, makeFlashcardPrompt };

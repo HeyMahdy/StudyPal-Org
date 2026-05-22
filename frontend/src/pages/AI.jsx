@@ -1,21 +1,27 @@
-import { Send, Sparkles } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useState } from 'react';
+import NotesContextPanel from '../components/ai/NotesContextPanel';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import api from '../services/api';
 
 export default function AI() {
   const [message, setMessage] = useState('');
-  const [content, setContent] = useState('');
   const [chat, setChat] = useState([]);
-  const [result, setResult] = useState('');
+  const [selectedNotes, setSelectedNotes] = useState([]);
 
   const ask = async (e) => {
     e.preventDefault();
     const text = message;
     setMessage('');
     setChat((items) => [...items, { role: 'you', text }]);
-    const res = await api.post('/ai/chat', { message: text });
+    
+    const payload = { message: text };
+    if (selectedNotes.length > 0) {
+      payload.contextNotes = selectedNotes;
+    }
+    
+    const res = await api.post('/ai/chat', payload);
     setChat((items) => [...items, { role: 'ai', text: res.data.reply }]);
   };
 
@@ -32,15 +38,7 @@ export default function AI() {
             <Button><Send size={16} /></Button>
           </form>
         </Card>
-        <Card>
-          <h2 className="text-xl font-bold">Study tools</h2>
-          <textarea className="input mt-4 min-h-40" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Paste notes or a chapter excerpt" />
-          <div className="mt-3 grid gap-3">
-            <Button variant="secondary" onClick={() => api.post('/ai/summarize', { content }).then((res) => setResult(res.data.summary))}><Sparkles size={16} />Summarize</Button>
-            <Button variant="secondary" onClick={() => api.post('/ai/flashcards', { content }).then((res) => setResult(res.data.cards))}>Generate flashcards</Button>
-          </div>
-          {result && <pre className="mt-4 whitespace-pre-wrap rounded-2xl bg-slate-100 p-4 text-sm dark:bg-gray-950">{result}</pre>}
-        </Card>
+        <NotesContextPanel selectedNotes={selectedNotes} onNotesChange={setSelectedNotes} />
       </div>
     </div>
   );

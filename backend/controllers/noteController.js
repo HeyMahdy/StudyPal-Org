@@ -1,5 +1,6 @@
 const { all, get, run } = require('../config/database');
 const { sendSuccess } = require('../utils/response');
+const { seedNotesIfEmpty } = require('../services/notesService');
 
 async function listNotes(req, res, next) {
   try {
@@ -52,4 +53,14 @@ async function deleteNote(req, res, next) {
   }
 }
 
-module.exports = { listNotes, createNote, updateNote, deleteNote };
+async function seedNotes(req, res, next) {
+  try {
+    // Development-only endpoint - seed sample notes for current user
+    const inserted = await seedNotesIfEmpty(req.user.id);
+    sendSuccess(res, { inserted }, `Seeded ${inserted} notes for user`);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listNotes, createNote, updateNote, deleteNote, seedNotes };
