@@ -90,7 +90,7 @@ class ExpenseAgent:
                 raise ExpenseCategorizationError('Failed to parse Agent 2 response.') from exc
 
         logger.info('Agent 2 complete')
-        return categorized
+        return self._normalize_categorized_output(categorized)
 
     def extract_from_receipt(self, s3_key: str) -> str:
         if not self.s3_bucket:
@@ -164,18 +164,62 @@ class ExpenseAgent:
         if json_mode:
             payload['response_format'] = {'type': 'json_object'}
 
-        response = requests.post(
-            OPENAI_URL,
-            headers={
-                'Authorization': f"Bearer {self.openai_api_key}",
-                'Content-Type': 'application/json'
-            },
-            json=payload,
-            timeout=30
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data.get('choices', [{}])[0].get('message', {}).get('content', '')
+        headers = {
+            'Authorization': f"Bearer {self.openai_api_key}",
+            'Content-Type': 'application/json'
+        }
+
+        last_error = None
+        for attempt in range(3):
+            try:
+                response = requests.post(
+                    OPENAI_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=60
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get('choices', [{}])[0].get('message', {}).get('content', '')
+            except requests.exceptions.ReadTimeout as exc:
+                last_error = exc
+                logger.warning('OpenAI read timeout (attempt %s)', attempt + 1)
+            except requests.exceptions.RequestException as exc:
+                last_error = exc
+                break
+
+        raise ExpenseParseError(f'OpenAI request failed: {last_error}')
+
+    def _normalize_categorized_output(self, categorized: Dict[str, Any]) -> Dict[str, Any]:
+        raw_category = str(categorized.get('category', '')).strip()
+        normalized = raw_category.lower()
+        category_map = {
+            'food & dining': 'Food & Dining',
+            'food and dining': 'Food & Dining',
+            'food': 'Food & Dining',
+            'dining': 'Food & Dining',
+            'housing': 'Housing',
+            'rent': 'Housing',
+            'transport': 'Transport',
+            'transportation': 'Transport',
+            'entertainment': 'Entertainment',
+            'shopping': 'Shopping',
+            'health': 'Health',
+            'utilities': 'Utilities',
+            'subscriptions': 'Subscriptions',
+            'subscription': 'Subscriptions',
+            'savings': 'Savings',
+            'saving': 'Savings',
+            'other': 'Other',
+            'misc': 'Other',
+            'miscellaneous': 'Other'
+        }
+        categorized['category'] = category_map.get(normalized, 'Shopping')
+
+        if categorized.get('is_academic') is None:
+            categorized['is_academic'] = False
+
+        return categorized
 
     def _ingestion_prompt(self) -> str:
         today = datetime.utcnow().date().isoformat()
@@ -203,40 +247,112 @@ class ExpenseAgent:
 
     def _categorization_prompt(self) -> str:
         return (
-            'You are a student expense categorization agent for a university student in Bangladesh.\n'
-            'You receive a parsed expense object and must add categorization fields.\n\n'
-            'Return ONLY valid JSON with ALL original fields preserved plus these new fields:\n'
+            'You are a student expense categorization agent for a university student in Bangladesh.\n\n'
+            'You receive a parsed expense object and must return it with added categorization fields.\n\n'
+            '═══════════════════════════════\n'
+            'STRICT OUTPUT RULE\n'
+            '═══════════════════════════════\n'
+            'Return ONLY valid JSON. No markdown, no explanation, no extra keys.\n'
+            'Preserve ALL original fields exactly as received, then append the new fields below.\n\n'
+            '═══════════════════════════════\n'
+            'NEW FIELDS TO ADD\n'
+            '═══════════════════════════════\n'
             '{\n'
-            '  ...all fields from Agent 1 output...,\n'
             '  "is_academic": boolean,\n'
-            '  "category": one of exactly:\n'
-            '    "food" | "transport" | "books" | "printing" | "software" |\n'
-            '    "courses" | "supplies" | "entertainment" | "health" |\n'
-            '    "freelance_tool" | "other",\n'
-            '  "sub_category": string (max 3 words),\n'
+            '  "category": string,        // see category rules\n'
+            '  "sub_category": string,    // max 3 words, lowercase\n'
             '  "is_exam_week": boolean,\n'
-            '  "academic_reason": string or null\n'
+            '  "academic_reason": string | null\n'
             '}\n\n'
-            'Category rules:\n'
-            '- food        → meal, snack, tea, coffee, restaurant, canteen\n'
-            '- transport   → rickshaw, CNG, bus, Pathao, Shohoz, Uber, fuel\n'
-            '- books       → textbooks, notebooks, reference books\n'
-            '- printing    → photocopy, print, binding, lamination\n'
-            '- software    → app, subscription, online tool, domain, hosting\n'
-            '- courses     → Udemy, Coursera, coaching, tuition fees\n'
-            '- supplies    → stationery, pen, USB, calculator, lab materials\n'
-            '- entertainment → movie, game, outing, non-study activity\n'
-            '- health      → medicine, doctor, pharmacy\n'
-            '- freelance_tool → Canva Pro, Figma, tools used for earning\n'
-            '- other       → anything that does not fit above\n\n'
-            'is_exam_week detection — set true if item context suggests:\n'
-            '  printing/photocopy, "past paper", "model test", "revision",\n'
-            '  last-minute book purchase, energy drink during study session\n\n'
-            'Examples:\n'
-            '- "photocopy at library" → is_academic:true, category:"printing", is_exam_week:true\n'
-            '- "lunch at TSC"         → is_academic:false, category:"food", is_exam_week:false\n'
-            '- "Pathao to Nilkhet"    → is_academic:true, category:"transport", is_exam_week:false\n'
-            '- "Udemy Python course"  → is_academic:true, category:"courses", is_exam_week:false'
+            '═══════════════════════════════\n'
+            'STEP 1 — PICK CATEGORY\n'
+            '═══════════════════════════════\n'
+            'Match the expense to exactly one category from the list below.\n'
+            'If unsure, return category as "Shopping" by default.\n\n'
+            '  "Food & Dining"   → meal, snack, tea, coffee, water, restaurant, canteen, delivery\n'
+            '  "Housing"         → rent, hostel, dorm, maintenance, furniture tied to housing\n'
+            '  "Transport"       → rickshaw, CNG, bus, Pathao, Shohoz, Uber, fuel, parking\n'
+            '  "Entertainment"   → movie ticket, game purchase, outing, hangout, streaming\n'
+            '  "Shopping"        → clothes, accessories, general retail, electronics, gifts\n'
+            '  "Health"          → medicine, pharmacy purchase, doctor visit, clinic fee\n'
+            '  "Utilities"       → electricity, gas, water, internet bill, mobile recharge\n'
+            '  "Subscriptions"   → SaaS, app subscriptions, paid tools, memberships\n'
+            '  "Savings"         → money set aside, deposits, savings transfers\n'
+            '  "Other"           → does not fit any above\n\n'
+            'TIEBREAKERS:\n'
+            '  • Streaming subscription → "Subscriptions" (not Entertainment)\n'
+            '  • Mobile/data recharge → "Utilities" (not Subscriptions)\n'
+            '  • Tuition/course fee → "Subscriptions" (if recurring) else "Shopping"\n\n'
+            '═══════════════════════════════\n'
+            'STEP 2 — SET is_academic\n'
+            '═══════════════════════════════\n'
+            'Set true only if the expense directly supports studying or academic work.\n'
+            'Otherwise set false.\n\n'
+            '═══════════════════════════════\n'
+            'STEP 3 — DETECT is_exam_week\n'
+            '═══════════════════════════════\n'
+            'Set true if ANY of the following signals appear in the item name,\n'
+            'description, or context:\n\n'
+            '  □ item contains: "past paper", "model test", "revision", "mock exam"\n'
+            '  □ last-minute book or notes purchase (e.g., "urgent", "exam copy")\n'
+            '  □ energy drink, coffee, or late-night snack during a study session\n'
+            '  □ transport to exam venue or coaching at unusual hour\n'
+            '  □ date is close to a known exam period (if date is provided)\n\n'
+            'If NONE of the above apply → false\n\n'
+            '═══════════════════════════════\n'
+            'STEP 4 — WRITE academic_reason\n'
+            '═══════════════════════════════\n'
+            '  • If is_academic is true  → write a short sentence explaining why\n'
+            '                               (e.g., "Printed lecture notes for upcoming exam")\n'
+            '  • If is_academic is false → set to null\n\n'
+            '═══════════════════════════════\n'
+            'FEW-SHOT EXAMPLES\n'
+            '═══════════════════════════════\n'
+            'Input:\n'
+            '  { "item": "Photocopy of past papers", "amount": 40, "currency": "BDT" }\n'
+            'Output:\n'
+            '  {\n'
+            '    "item": "Photocopy of past papers", "amount": 40, "currency": "BDT",\n'
+            '    "is_academic": true,\n'
+            '    "category": "Shopping",\n'
+            '    "sub_category": "past paper copy",\n'
+            '    "is_exam_week": true,\n'
+            '    "academic_reason": "Photocopied past exam papers for exam preparation."\n'
+            '  }\n\n'
+            'Input:\n'
+            '  { "item": "Pathao ride to Dhanmondi", "amount": 85, "currency": "BDT" }\n'
+            'Output:\n'
+            '  {\n'
+            '    "item": "Pathao ride to Dhanmondi", "amount": 85, "currency": "BDT",\n'
+            '    "is_academic": false,\n'
+            '    "category": "Transport",\n'
+            '    "sub_category": "ride share",\n'
+            '    "is_exam_week": false,\n'
+            '    "academic_reason": null\n'
+            '  }\n\n'
+            'Input:\n'
+            '  { "item": "Red Bull during revision session", "amount": 120, "currency": "BDT" }\n'
+            'Output:\n'
+            '  {\n'
+            '    "item": "Red Bull during revision session", "amount": 120, "currency": "BDT",\n'
+            '    "is_academic": true,\n'
+            '    "category": "Food & Dining",\n'
+            '    "sub_category": "study energy drink",\n'
+            '    "is_exam_week": true,\n'
+            '    "academic_reason": "Energy drink consumed during late-night exam revision session."\n'
+            '  }\n\n'
+            'Input:\n'
+            '  { "item": "Canva Pro monthly", "amount": 750, "currency": "BDT", "context": "used for client logo work" }\n'
+            'Output:\n'
+            '  {\n'
+            '    "item": "Canva Pro monthly", "amount": 750, "currency": "BDT", "context": "used for client logo work",\n'
+            '    "is_academic": false,\n'
+            '    "category": "Subscriptions",\n'
+            '    "sub_category": "design subscription",\n'
+            '    "is_exam_week": false,\n'
+            '    "academic_reason": null\n'
+            '  }\n\n'
+            'Now categorize the following expense object:'
         )
 
 
