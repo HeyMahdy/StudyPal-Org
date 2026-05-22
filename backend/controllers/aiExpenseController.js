@@ -42,6 +42,21 @@ async function createExpense(req, res, next) {
       ]
     );
 
+    await run(
+      `INSERT INTO expenses (user_id, title, amount, category, description, date, type, spent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        item,
+        Number(amount),
+        category,
+        vendor || item,
+        expense_date,
+        'expense',
+        expense_date
+      ]
+    );
+
     const expense = await get('SELECT * FROM ai_expenses WHERE id = ? AND user_id = ?', [id, req.user.id]);
     return sendSuccess(res, { expense }, 'Expense created', 201);
   } catch (err) {

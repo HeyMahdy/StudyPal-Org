@@ -48,13 +48,13 @@ body {
   .card {
     @apply rounded-3xl border p-5 transition duration-200;
     border-color: var(--border);
-    background: #fbf7f1;
+    background: #ffffff;
   }
 
   .input {
     @apply w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2;
     border-color: var(--border);
-    background: #fffaf2;
+    background: #ffffff;
     color: var(--ink);
     box-shadow: none;
     ring-color: rgba(200, 75, 47, 0.2);
