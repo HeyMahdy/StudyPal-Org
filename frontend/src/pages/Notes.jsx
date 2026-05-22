@@ -344,32 +344,6 @@ export default function Notes() {
           </section>
 
 
-          <section className="notes-tutor">
-            <div className="notes-output-head">
-              <div>
-                <p className="notes-label">Ask your tutor</p>
-                <h2 className="notes-section-title">Clarify anything</h2>
-              </div>
-            </div>
-            <form onSubmit={askTutor} className="notes-tutor-form">
-              <textarea
-                className="notes-tutor-input"
-                value={tutorInput}
-                onChange={(e) => setTutorInput(e.target.value)}
-                placeholder="Ask a question about your notes or paste a tricky paragraph."
-                rows={4}
-              />
-              <div className="notes-actions">
-                <Button type="submit" disabled={isTutorLoading || !tutorInput.trim()}>
-                  <Send size={16} />Ask tutor
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => setTutorInput('')}>
-                  Clear
-                </Button>
-              </div>
-            </form>
-            {tutorReply && <div className="notes-tutor-reply"><Sparkles size={16} />{tutorReply}</div>}
-          </section>
         </main>
 
         <aside className="notes-aside">

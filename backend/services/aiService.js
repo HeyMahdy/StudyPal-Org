@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MAX_CONTEXT_CHARS = 8000;
 const MAX_MESSAGE_CHARS = 2000;
 const REQUEST_TIMEOUT = 15000; // 15 seconds
@@ -15,13 +15,14 @@ function sleep(ms) {
 }
 
 /**
- * Call Gemini API with retry logic and timeout
+ * Call OpenAI API with retry logic and timeout
  * Gracefully falls back if API is unavailable
  */
-async function askGemini(prompt) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || key === 'your_gemini_api_key') {
-    return 'AI responses are disabled. Please configure GEMINI_API_KEY to enable live AI features.';
+async function askOpenAI(prompt) {
+  const key = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  if (!key || key === 'your_openai_api_key') {
+    return 'AI responses are disabled. Please configure OPENAI_API_KEY to enable live AI features.';
   }
 
   let lastError = null;
@@ -29,13 +30,16 @@ async function askGemini(prompt) {
   // Retry logic for transient failures
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await axios.post(`${GEMINI_URL}?key=${key}`, {
-        contents: [{ parts: [{ text: prompt }] }]
+      const response = await axios.post(OPENAI_URL, {
+        model,
+        temperature: 0.2,
+        messages: [{ role: 'user', content: prompt }]
       }, {
-        timeout: REQUEST_TIMEOUT
+        timeout: REQUEST_TIMEOUT,
+        headers: { Authorization: `Bearer ${key}` }
       });
 
-      const reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const reply = response.data?.choices?.[0]?.message?.content;
       if (reply) {
         return reply;
       }
@@ -49,7 +53,7 @@ async function askGemini(prompt) {
       // Log attempt
       if (attempt < MAX_RETRIES) {
         console.warn(
-          `[StudyPal] Gemini API attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${status || message}). Retrying in ${RETRY_DELAY}ms...`
+          `[StudyPal] OpenAI API attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${status || message}). Retrying in ${RETRY_DELAY}ms...`
         );
       }
 
@@ -61,7 +65,7 @@ async function askGemini(prompt) {
 
       // Don't retry on client errors (400, 401, 403, 404)
       if (status >= 400 && status < 500) {
-        console.error(`[StudyPal] Gemini API client error (${status}):`, message);
+        console.error(`[StudyPal] OpenAI API client error (${status}):`, message);
         break;
       }
 
@@ -77,17 +81,17 @@ async function askGemini(prompt) {
 
     if (status === 503 || status === 429) {
       console.error(
-        `[StudyPal] Gemini API unavailable after ${MAX_RETRIES + 1} attempts. Service may be overloaded.`
+        `[StudyPal] OpenAI API unavailable after ${MAX_RETRIES + 1} attempts. Service may be overloaded.`
       );
       return 'The AI service is temporarily unavailable due to high demand. Please try again in a few moments.';
     }
 
     if (message.includes('timeout')) {
-      console.error('[StudyPal] Gemini API request timed out after', REQUEST_TIMEOUT, 'ms');
+      console.error('[StudyPal] OpenAI API request timed out after', REQUEST_TIMEOUT, 'ms');
       return 'The AI request timed out. Please try again with a shorter message.';
     }
 
-    console.error('[StudyPal] Gemini API error:', message);
+    console.error('[StudyPal] OpenAI API error:', message);
     return 'An error occurred while processing your request. Please try again.';
   }
 
@@ -180,4 +184,4 @@ function makeFlashcardPrompt(text) {
   return `Create concise study flashcards from this material. Return JSON array with front and back fields only:\n\n${text}`;
 }
 
-module.exports = { askGemini, buildContextPrompt, sanitizeContextNotes, makeFlashcardPrompt };
+module.exports = { askOpenAI, buildContextPrompt, sanitizeContextNotes, makeFlashcardPrompt };
