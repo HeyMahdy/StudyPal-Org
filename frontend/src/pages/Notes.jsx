@@ -1,9 +1,7 @@
-import { Globe, Link2, Play, Send, Sparkles, Trash2 } from 'lucide-react';
+import { Globe, Link2, Play, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import ReactQuill from 'react-quill';
 import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import api from '../services/api';
 import agentApi from '../services/agentApi';
@@ -233,28 +231,7 @@ export default function Notes() {
       </div>
 
       <div className="notes-shell">
-        <aside className="notes-sidebar">
-          <div className="notes-sidebar-head">
-            <p className="notes-label">History</p>
-            <Input label="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <div className="notes-list">
-            {notes.map((note) => (
-              <button
-                key={note.id}
-                onClick={() => handleHistoryClick(note)}
-                className={`notes-item ${active.id === note.id ? 'notes-item-active' : ''}`}
-              >
-                <div>
-                  <p className="notes-item-title">{note.title}</p>
-                  <p className="notes-item-date">{new Date(note.updated_at || note.created_at).toLocaleDateString()}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <main className="notes-main">
+        <aside className="notes-side">
           <section className="notes-upload">
             <div className="notes-upload-head">
               <div>
@@ -294,7 +271,9 @@ export default function Notes() {
             </form>
             {agentError && <p className="notes-error">{agentError}</p>}
           </section>
+        </aside>
 
+        <main className="notes-main">
           <section className="notes-output">
             <div className="notes-output-head">
               <div>
@@ -315,18 +294,30 @@ export default function Notes() {
               )}
               {historyPayload && active.id && (
                 <div className="notes-actions">
-                  <Button type="button" variant="secondary" onClick={() => api.delete(`/notes/${active.id}`).then(() => { setActive({ title: '', content: '', tags: '' }); setHistoryPayload(null); load(); })}>
-                    <Trash2 size={16} />Delete note
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      api.delete(`/notes/${active.id}`).then(() => {
+                        setActive({ title: '', content: '', tags: '' });
+                        setHistoryPayload(null);
+                        load();
+                      })
+                    }
+                  >
+                    <Trash2 size={16} />{' '}Delete note
                   </Button>
                 </div>
               )}
             </div>
-            <div className="notes-render">
-              {displayNote?.notes_markdown ? (
-                <ReactMarkdown>{displayNote.notes_markdown}</ReactMarkdown>
-              ) : (
-                <p className="notes-placeholder">Upload a note or select one from history to view it here.</p>
-              )}
+            <div className="notes-sheet">
+              <div className="notes-render">
+                {displayNote?.notes_markdown ? (
+                  <ReactMarkdown>{displayNote.notes_markdown}</ReactMarkdown>
+                ) : (
+                  <p className="notes-placeholder">Upload a note or select one from history to view it here.</p>
+                )}
+              </div>
             </div>
             {!!displayNote?.key_vocabulary?.length && (
               <div className="notes-glossary">
@@ -341,68 +332,84 @@ export default function Notes() {
                 </div>
               </div>
             )}
+            <div className="notes-sources">
+              <div className="notes-sources-section">
+                <div className="notes-aside-head">
+                  <Play size={16} />
+                  <p>YouTube Links</p>
+                </div>
+                <div className="notes-cards">
+                  {displayNote?.youtube_links?.length ? (
+                    displayNote.youtube_links.map((item, index) => {
+                      const videoId = getYouTubeId(item.url);
+                      const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
+                      return (
+                        <a key={`${item.url}-${index}`} className="notes-media" href={item.url} target="_blank" rel="noreferrer">
+                          <div className="notes-media-thumb">
+                            {thumbnail ? <img src={thumbnail} alt="" /> : <Play size={20} />}
+                          </div>
+                          <div>
+                            <p className="notes-media-title">{item.title}</p>
+                            <p className="notes-media-meta">youtube.com</p>
+                          </div>
+                        </a>
+                      );
+                    })
+                  ) : (
+                    <p className="notes-empty">No videos yet.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="notes-sources-section">
+                <div className="notes-aside-head">
+                  <Link2 size={16} />
+                  <p>Web Links</p>
+                </div>
+                <div className="notes-cards">
+                  {displayNote?.web_links?.length ? (
+                    displayNote.web_links.map((item, index) => {
+                      const domain = getDomain(item.url);
+                      const favicon = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : '';
+                      return (
+                        <a key={`${item.url}-${index}`} className="notes-resource" href={item.url} target="_blank" rel="noreferrer">
+                          <div className="notes-resource-icon">
+                            {favicon ? <img src={favicon} alt="" /> : <Globe size={18} />}
+                          </div>
+                          <div>
+                            <p className="notes-media-title">{item.title}</p>
+                            <p className="notes-media-meta">{domain}</p>
+                          </div>
+                        </a>
+                      );
+                    })
+                  ) : (
+                    <p className="notes-empty">No links yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </section>
-
-
         </main>
 
-        <aside className="notes-aside">
-          <div className="notes-sticky">
-            <div className="notes-aside-section">
-              <div className="notes-aside-head">
-                <Play size={16} />
-                <p>YouTube Links</p>
-              </div>
-              <div className="notes-cards">
-                {displayNote?.youtube_links?.length ? (
-                  displayNote.youtube_links.map((item, index) => {
-                    const videoId = getYouTubeId(item.url);
-                    const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
-                    return (
-                      <a key={`${item.url}-${index}`} className="notes-media" href={item.url} target="_blank" rel="noreferrer">
-                        <div className="notes-media-thumb">
-                          {thumbnail ? <img src={thumbnail} alt="" /> : <Play size={20} />}
-                        </div>
-                        <div>
-                          <p className="notes-media-title">{item.title}</p>
-                          <p className="notes-media-meta">youtube.com</p>
-                        </div>
-                      </a>
-                    );
-                  })
-                ) : (
-                  <p className="notes-empty">No videos yet.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="notes-aside-section">
-              <div className="notes-aside-head">
-                <Link2 size={16} />
-                <p>Web Links</p>
-              </div>
-              <div className="notes-cards">
-                {displayNote?.web_links?.length ? (
-                  displayNote.web_links.map((item, index) => {
-                    const domain = getDomain(item.url);
-                    const favicon = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : '';
-                    return (
-                      <a key={`${item.url}-${index}`} className="notes-resource" href={item.url} target="_blank" rel="noreferrer">
-                        <div className="notes-resource-icon">
-                          {favicon ? <img src={favicon} alt="" /> : <Globe size={18} />}
-                        </div>
-                        <div>
-                          <p className="notes-media-title">{item.title}</p>
-                          <p className="notes-media-meta">{domain}</p>
-                        </div>
-                      </a>
-                    );
-                  })
-                ) : (
-                  <p className="notes-empty">No resources yet.</p>
-                )}
-              </div>
-            </div>
+        <aside className="notes-sidebar">
+          <div className="notes-sidebar-head">
+            <p className="notes-label">History</p>
+            <Input label="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="notes-list">
+            {notes.map((note) => (
+              <button
+                key={note.id}
+                onClick={() => handleHistoryClick(note)}
+                className={`notes-item ${active.id === note.id ? 'notes-item-active' : ''}`}
+              >
+                <div>
+                  <p className="notes-item-title">{note.title}</p>
+                  <p className="notes-item-date">{new Date(note.updated_at || note.created_at).toLocaleDateString()}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </aside>
       </div>
