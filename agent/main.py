@@ -57,6 +57,9 @@ async def analyze_note(request: AnalyzeRequest):
         return analyze_result
 
     extracted_text = analyze_result.get("extracted_text", "")
+    if not extracted_text.strip():
+        return {"status": "DOWN", "error": "No text extracted from the document."}
+
     llm = ChatOpenAI(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         temperature=0.2,
@@ -70,13 +73,16 @@ async def analyze_note(request: AnalyzeRequest):
         "final_study_guide": "",
     }
 
-    result_state = studypal_graph.invoke(
-        state,
-        config={"configurable": {"my_llm": llm}},
-    )
+    try:
+        result_state = studypal_graph.invoke(
+            state,
+            config={"configurable": {"my_llm": llm}},
+        )
+    except Exception as exc:
+        return {"status": "DOWN", "error": f"LLM processing failed: {exc}"}
 
-    messages = result_state["messages"]
-    final_message = messages[-1]
+    messages = result_state.get("messages", [])
+    final_message = messages[-1] if messages else None
 
     youtube_links = []
     web_links = []
@@ -110,7 +116,7 @@ async def analyze_note(request: AnalyzeRequest):
                     web_links.append({"title": title, "url": url})
 
     structured_output = {
-        "notes_markdown": final_message.content,
+        "notes_markdown": getattr(final_message, "content", ""),
         "youtube_links": youtube_links,
         "web_links": web_links,
     }
@@ -123,6 +129,9 @@ async def analyze_note(request: AnalyzeRequest):
 
     structured_output["youtube_links"] = youtube_links
     structured_output["web_links"] = web_links
+
+    if not structured_output.get("notes_markdown"):
+        structured_output["notes_markdown"] = extracted_text
 
     return {
         "status": "success",
