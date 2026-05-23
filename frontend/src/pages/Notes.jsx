@@ -111,8 +111,12 @@ export default function Notes() {
   const saveAgentNote = async () => {
     if (!agentResult?.notes_markdown) return;
 
-    const match = agentResult.notes_markdown.match(/^##\s+(.+)$/m);
-    const title = match?.[1]?.trim() || `OCR Note ${new Date().toISOString().slice(0, 10)}`;
+    const firstLine = agentResult.notes_markdown
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => line.length > 0) || '';
+    const cleanedTitle = firstLine.replace(/^#+\s*/, '').replace(/^[-*\d.]+\s+/, '').trim();
+    const title = cleanedTitle || `OCR Note ${new Date().toISOString().slice(0, 10)}`;
 
     const payload = {
       notes_markdown: agentResult.notes_markdown,

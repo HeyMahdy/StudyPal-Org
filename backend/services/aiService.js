@@ -112,10 +112,23 @@ function sanitizeContextNotes(contextNotes) {
   // Filter and sanitize each note
   return contextNotes
     .filter((note) => note && typeof note === 'object')
-    .map((note) => ({
-      title: typeof note.title === 'string' ? note.title.trim() : 'Untitled Note',
-      content: typeof note.content === 'string' ? note.content.trim() : ''
-    }))
+    .map((note) => {
+      const title = typeof note.title === 'string' ? note.title.trim() : 'Untitled Note';
+      let content = typeof note.content === 'string' ? note.content.trim() : '';
+
+      if (content.startsWith('{') && content.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed && typeof parsed === 'object') {
+            content = typeof parsed.notes_markdown === 'string' ? parsed.notes_markdown.trim() : content;
+          }
+        } catch {
+          // Keep original content if parsing fails
+        }
+      }
+
+      return { title, content };
+    })
     .filter((note) => note.title || note.content);
 }
 
@@ -154,7 +167,7 @@ function buildContextPrompt(message, contextNotes = []) {
     if (contextText.length > 0) {
       return `You are StudyPal, a focused study assistant.
 
-Use ONLY the provided notes to answer the question. Be specific and cite relevant details from the notes. Do not add information outside the notes.
+Use ONLY the provided notes to answer the question. Do not restate the full notes. Focus on the user's question and cite relevant details from the notes.
 
 STUDY NOTES:
 ${contextText}
