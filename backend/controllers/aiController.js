@@ -1,4 +1,4 @@
-const { askGemini, buildContextPrompt, makeFlashcardPrompt } = require('../services/aiService');
+const { askOpenAI, buildContextPrompt, makeFlashcardPrompt } = require('../services/aiService');
 const { sendSuccess } = require('../utils/response');
 
 async function chat(req, res, next) {
@@ -19,7 +19,7 @@ async function chat(req, res, next) {
     const prompt = buildContextPrompt(message, contextNotes);
 
     // Call AI service (now returns graceful fallback on failure, never throws)
-    const reply = await askGemini(prompt);
+    const reply = await askOpenAI(prompt);
 
     sendSuccess(res, { reply }, 'AI response ready');
   } catch (err) {
@@ -40,7 +40,7 @@ async function summarize(req, res, next) {
     }
 
     // Call AI service with timeout protection
-    const summary = await askGemini(
+    const summary = await askOpenAI(
       `Summarize these notes into clear study bullets and key takeaways:\n\n${req.body.content}`
     );
     sendSuccess(res, { summary }, 'Summary ready');
@@ -61,7 +61,7 @@ async function flashcards(req, res, next) {
     }
 
     // Call AI service with timeout protection
-    const cards = await askGemini(makeFlashcardPrompt(req.body.content));
+    const cards = await askOpenAI(makeFlashcardPrompt(req.body.content));
     sendSuccess(res, { cards }, 'Flashcards ready');
   } catch (err) {
     console.error('[StudyPal] Flashcards handler error:', err.message);

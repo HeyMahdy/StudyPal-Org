@@ -1,9 +1,10 @@
-import { Flame, Minus, Plus, Trash2 } from 'lucide-react';
+import { Flame, Minus, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
+import ProgressBar from '../components/ui/ProgressBar';
 import api from '../services/api';
 import { today } from '../utils/format';
 
@@ -14,6 +15,9 @@ export default function Habits() {
   const [date, setDate] = useState(today());
   const [habits, setHabits] = useState([]);
   const [overview, setOverview] = useState({ completed_today: 0, total_habits: 0, best_streak: 0, weekly_completion_rate: 0 });
+  const totalHabits = Number(overview.total_habits || 0);
+  const completedToday = Number(overview.completed_today || 0);
+  const todayCompletionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
 
   const load = () => api.get(`/habits?date=${date}`).then((res) => {
     setHabits(res.data.habits);
@@ -43,24 +47,99 @@ export default function Habits() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Habits</h1>
-          <p className="text-gray-500 dark:text-gray-400">Quick daily check-ins with clear streak momentum.</p>
+      <Card className="habits-hero">
+        <div className="habits-hero-copy">
+          <p className="habits-kicker">Habit Lab</p>
+          <h1 className="habits-title">Habits</h1>
+          <p className="habits-subtitle">Track micro-wins, build streaks, and keep your weekly rhythm visible.</p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="habits-hero-controls">
           <Input label="Log date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <Link to="/habits/new" className="btn-primary">
             Add Habit
           </Link>
         </div>
+        <div className="habits-hero-metrics">
+          <div className="habits-metric">
+            <p className="habits-metric-label">Today</p>
+            <p className="habits-metric-value">{completedToday}/{totalHabits}</p>
+            <span className="habits-metric-foot">{todayCompletionRate}% completion</span>
+          </div>
+          <div className="habits-metric">
+            <p className="habits-metric-label">Best streak</p>
+            <p className="habits-metric-value">
+              <Flame size={16} />{overview.best_streak}
+            </p>
+            <span className="habits-metric-foot">Longest run so far</span>
+          </div>
+          <div className="habits-metric">
+            <p className="habits-metric-label">Weekly rate</p>
+            <p className="habits-metric-value">{overview.weekly_completion_rate}%</p>
+            <span className="habits-metric-foot">Last 7 days</span>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <Card className="habits-progress">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="habits-section-label">Momentum</p>
+              <h2 className="habits-section-title">Daily rhythm</h2>
+            </div>
+            <span className="habits-chip"><Sparkles size={14} />Focus</span>
+          </div>
+          <div className="mt-4 grid gap-4">
+            <ProgressBar label="Habits completed" value={completedToday} total={totalHabits} color="bg-emerald-500" />
+            <ProgressBar label="Weekly consistency" value={overview.weekly_completion_rate} total={100} color="bg-amber-500" format={(v) => `${v}%`} />
+          </div>
+        </Card>
+        <Card className="habits-highlight">
+          <p className="habits-section-label">Streak watch</p>
+          <h2 className="habits-section-title">Best streak pulse</h2>
+          <p className="habits-highlight-value">
+            <Flame size={20} />{overview.best_streak} days
+          </p>
+          <p className="habits-highlight-copy">Keep the chain alive for two more days to set a new record.</p>
+        </Card>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3">
-        <Metric label="Habits completed today" value={`${overview.completed_today}/${overview.total_habits}`} />
-        <Metric label="Current streak" value={overview.best_streak} tone="text-amber-600 dark:text-amber-300" icon />
-        <Metric label="Weekly completion rate" value={`${overview.weekly_completion_rate}%`} tone="text-emerald-600 dark:text-emerald-300" />
-      </div>
+      <Card className="habits-map">
+        <div className="habits-map-head">
+          <div>
+            <p className="habits-section-label">Habit map</p>
+            <h2 className="habits-section-title">Last 7 days</h2>
+          </div>
+          <p className="habits-map-meta">Tap a habit to log or edit.</p>
+        </div>
+        {habits.length ? (
+          <div className="habits-map-grid">
+            <div className="habits-map-header">
+              <span>Habit</span>
+              <div className="habits-map-days">
+                {(habits[0]?.weekly || []).map((day) => (
+                  <span key={day.date}>{weekLabel(day.date)}</span>
+                ))}
+              </div>
+            </div>
+            {habits.map((habit) => (
+              <button key={habit.id} type="button" className="habits-map-row" onClick={() => navigate(`/habits/${habit.id}?date=${date}`)}>
+                <div className="habits-map-title">
+                  <span className="habits-map-name">{habit.title}</span>
+                  <span className="habits-map-meta">{habit.category || 'General'}</span>
+                </div>
+                <div className="habits-map-days">
+                  {(habit.weekly || []).map((day) => (
+                    <span key={day.date} className={`habits-map-cell ${day.completed ? 'is-on' : 'is-off'}`} title={day.date} />
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="habits-empty">No habits yet. Add one to start your map.</p>
+        )}
+      </Card>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {habits.map((habit) => (

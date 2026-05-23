@@ -104,15 +104,22 @@ body {
 
 .notes-shell {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  grid-template-columns: 320px minmax(0, 1fr) 280px;
   gap: 24px;
 }
 
+.notes-side,
 .notes-sidebar,
-.notes-main,
-.notes-aside {
+.notes-main {
   display: grid;
   gap: 20px;
+}
+
+.notes-side {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  height: fit-content;
 }
 
 .notes-sidebar {
@@ -190,6 +197,227 @@ body {
   background: #fbf7f1;
   display: grid;
   gap: 16px;
+}
+
+.habits-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 20px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #fff2dd 0%, #f7efe2 55%, #f3e7d3 100%);
+}
+
+.habits-hero::after {
+  content: "";
+  position: absolute;
+  right: -120px;
+  top: -120px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(200, 75, 47, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.habits-hero-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.habits-kicker {
+  font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 11px;
+  color: rgba(15, 14, 13, 0.7);
+}
+
+.habits-title {
+  font-family: "Fraunces", serif;
+  font-size: 36px;
+  margin: 0;
+}
+
+.habits-subtitle {
+  max-width: 520px;
+  color: rgba(15, 14, 13, 0.75);
+}
+
+.habits-hero-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.habits-hero-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.habits-metric {
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(200, 184, 154, 0.6);
+  display: grid;
+  gap: 6px;
+}
+
+.habits-metric-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.habits-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.habits-metric-foot {
+  font-size: 12px;
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.habits-section-label {
+  font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  color: rgba(15, 14, 13, 0.7);
+}
+
+.habits-section-title {
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  margin: 6px 0 0;
+}
+
+.habits-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff6e5;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a3f26;
+}
+
+.habits-progress,
+.habits-highlight,
+.habits-map {
+  display: grid;
+  gap: 12px;
+}
+
+.habits-highlight {
+  background: #fffaf2;
+}
+
+.habits-highlight-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+.habits-highlight-copy {
+  font-size: 14px;
+  color: rgba(15, 14, 13, 0.7);
+}
+
+.habits-map-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.habits-map-meta {
+  font-size: 13px;
+  color: rgba(15, 14, 13, 0.6);
+}
+
+.habits-map-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.habits-map-header,
+.habits-map-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) repeat(7, 28px);
+  gap: 8px;
+  align-items: center;
+}
+
+.habits-map-header {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(15, 14, 13, 0.5);
+}
+
+.habits-map-row {
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(200, 184, 154, 0.5);
+  background: #fffaf2;
+  text-align: left;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.habits-map-row:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.habits-map-title {
+  display: grid;
+  gap: 4px;
+}
+
+.habits-map-name {
+  font-weight: 600;
+}
+
+.habits-map-days {
+  display: grid;
+  grid-template-columns: repeat(7, 28px);
+  gap: 8px;
+  justify-items: center;
+}
+
+.habits-map-cell {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(200, 184, 154, 0.6);
+}
+
+.habits-map-cell.is-on {
+  background: linear-gradient(135deg, #f6b87a 0%, #e67f4f 100%);
+  border-color: rgba(200, 75, 47, 0.5);
+}
+
+.habits-map-cell.is-off {
+  background: #f2ede4;
+}
+
+.habits-empty {
+  font-size: 14px;
+  color: rgba(15, 14, 13, 0.6);
 }
 
 .notes-history-actions {
@@ -286,15 +514,60 @@ body {
   border-radius: 14px;
 }
 
-.notes-render {
+.notes-sheet {
+  position: relative;
+  border-radius: 20px;
   background: #fffaf2;
-  border-radius: 18px;
-  padding: 20px;
   border: 1px solid var(--border);
-  min-height: 180px;
+  overflow: hidden;
+}
+
+.notes-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(200, 184, 154, 0.35) 0,
+    rgba(200, 184, 154, 0.35) 1px,
+    transparent 1px,
+    transparent 28px
+  );
+  pointer-events: none;
+}
+
+.notes-sheet::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 40px;
+  width: 2px;
+  background: rgba(200, 75, 47, 0.25);
+  pointer-events: none;
+}
+
+.notes-render {
+  position: relative;
+  padding: 28px 28px 28px 64px;
+  min-height: 200px;
 }
 
 .notes-glossary {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  background: #fffaf2;
+  display: grid;
+  gap: 12px;
+}
+
+.notes-sources {
+  display: grid;
+  gap: 16px;
+}
+
+.notes-sources-section {
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 16px;
@@ -361,26 +634,6 @@ body {
   border-radius: 18px;
   padding: 12px 14px;
   border: 1px solid var(--border);
-}
-
-.notes-aside {
-  align-self: start;
-}
-
-.notes-sticky {
-  position: sticky;
-  top: 24px;
-  display: grid;
-  gap: 20px;
-}
-
-.notes-aside-section {
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 18px;
-  background: #fbf7f1;
-  display: grid;
-  gap: 12px;
 }
 
 .notes-aside-head {
@@ -463,8 +716,8 @@ body {
   .notes-shell {
     grid-template-columns: 1fr;
   }
-  .notes-sidebar,
-  .notes-aside {
+  .notes-side,
+  .notes-sidebar {
     position: static;
   }
 }
