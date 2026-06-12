@@ -193,16 +193,32 @@ function buildContextPrompt(message, contextNotes = [], conversationHistory = []
     const historyText = buildHistoryText(conversationHistory);
 
     // Return appropriate prompt based on context availability
-    if (contextText.length > 0 && historyText.length > 0) {
-      return `You are StudyPal, a focused study assistant.
+    if (contextText.length > 0) {
+      if (historyText.length > 0) {
+        return `You are StudyPal, a focused study assistant.
 
 Use ONLY the provided notes to answer the question. Do not restate the full notes. Focus on the user's question and cite relevant details from the notes.
 
 STUDY NOTES:
 ${contextText}
 
-  CHAT HISTORY:
-  ${historyText}
+CHAT HISTORY:
+${historyText}
+
+---
+
+USER QUESTION:
+${message}
+
+Answer clearly and concisely, based only on the notes provided.`;
+      }
+
+      return `You are StudyPal, a focused study assistant.
+
+Use ONLY the provided notes to answer the question. Do not restate the full notes. Focus on the user's question and cite relevant details from the notes.
+
+STUDY NOTES:
+${contextText}
 
 ---
 
@@ -215,17 +231,17 @@ Answer clearly and concisely, based only on the notes provided.`;
     if (historyText.length > 0) {
       return `You are StudyPal, a focused study assistant.
 
-  Use the chat history as context and answer the latest user message clearly and concisely.
+Use the chat history as context and answer the latest user message clearly and concisely.
 
-  CHAT HISTORY:
-  ${historyText}
+CHAT HISTORY:
+${historyText}
 
-  ---
+---
 
-  USER QUESTION:
-  ${message}
+USER QUESTION:
+${message}
 
-  Answer clearly and concisely.`;
+Answer clearly and concisely.`;
     }
 
     // Fallback to generic prompt if no context

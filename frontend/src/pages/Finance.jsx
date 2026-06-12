@@ -1,4 +1,4 @@
-import { Bell, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Pie } from 'react-chartjs-2';
 import {
@@ -110,16 +110,14 @@ export default function Finance() {
             <button type="button" onClick={() => setSelectedDate((current) => shiftDate(current, -1))} className="rounded p-1 text-gray-500 hover:bg-slate-100 dark:hover:bg-gray-800">
               <ChevronLeft size={16} />
             </button>
-            <div className="relative">
-              <span className="inline-flex min-w-28 cursor-pointer items-center justify-center rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                {selectedDateLabel}
-              </span>
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 px-2 py-1 dark:border-gray-700">
+              <CalendarDays size={14} className="text-gray-500 dark:text-gray-400" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(event) => setSelectedDate(event.target.value)}
                 aria-label="Select finance history date"
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                className="cursor-pointer bg-transparent text-xs font-semibold text-gray-700 outline-none dark:text-gray-300"
               />
             </div>
             <button type="button" onClick={() => setSelectedDate((current) => shiftDate(current, 1))} className="rounded p-1 text-gray-500 hover:bg-slate-100 dark:hover:bg-gray-800">

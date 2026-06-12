@@ -2,7 +2,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -13,6 +13,8 @@ import { today } from '../utils/format';
 export default function Calendar() {
   const [events, setEvents] = useState([]);
   const [tooltip, setTooltip] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 0, top: 0 });
+  const tooltipRef = useRef(null);
   const [form, setForm] = useState({ title: '', start: today(), end: '', color: '#4F46E5' });
   const navigate = useNavigate();
 
@@ -67,6 +69,29 @@ export default function Calendar() {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (!tooltip || !tooltipRef.current) return;
+
+    const offset = 12;
+    const margin = 8;
+    const { anchorX, anchorY } = tooltip;
+    const rect = tooltipRef.current.getBoundingClientRect();
+
+    let left = anchorX + offset;
+    let top = anchorY + offset;
+
+    if (left + rect.width + margin > window.innerWidth) {
+      left = Math.max(margin, anchorX - rect.width - offset);
+    }
+    if (top + rect.height + margin > window.innerHeight) {
+      top = Math.max(margin, anchorY - rect.height - offset);
+    }
+
+    setTooltipPosition((current) => (
+      current.left === left && current.top === top ? current : { left, top }
+    ));
+  }, [tooltip]);
+
   const create = async (e) => {
     e.preventDefault();
     await api.post('/events', form);
@@ -98,8 +123,8 @@ export default function Calendar() {
             setTooltip({
               title: info.event.title,
               body: formatTaskTooltip(task),
-              x: info.jsEvent.pageX,
-              y: info.jsEvent.pageY
+              anchorX: info.jsEvent.clientX,
+              anchorY: info.jsEvent.clientY
             });
           }}
           eventMouseLeave={() => setTooltip(null)}
@@ -114,8 +139,9 @@ export default function Calendar() {
         />
         {tooltip && (
           <div
+            ref={tooltipRef}
             className="pointer-events-none fixed z-50 max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-xl dark:border-gray-800 dark:bg-gray-950"
-            style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}
+            style={{ left: tooltipPosition.left, top: tooltipPosition.top }}
           >
             <p className="font-semibold text-gray-900 dark:text-white">{tooltip.title}</p>
             {tooltip.body ? (

@@ -1,41 +1,77 @@
-import { CheckCircle2, ListTodo, Send } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Bot, CheckCircle2, ListTodo, Send, Sparkles, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import NotesContextPanel from '../components/ai/NotesContextPanel';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import api from '../services/api';
 import agentApi from '../services/agentApi';
 
-const STUDY_CHAT_KEY = 'studypal_ai_study_chat';
-const TASK_CHAT_KEY = 'studypal_ai_task_chat';
+const STUDY_CHAT_KEY_BASE = 'studypal_ai_study_chat';
+const TASK_CHAT_KEY_BASE = 'studypal_ai_task_chat';
+const STUDY_STARTERS = [
+  'Explain this chapter in simple terms',
+  'Give me a 20-minute study plan for today',
+  'Quiz me with 5 questions from my notes'
+];
+const TASK_STARTERS = [
+  'Build a portfolio website for internship applications',
+  'Plan a one-week exam prep schedule',
+  'Break down a final-year project into actionable tasks'
+];
 
 function loadStoredChat(storageKey) {
   try {
-    const stored = localStorage.getItem(storageKey);
-    return stored ? JSON.parse(stored) : [];
+    const stored = sessionStorage.getItem(storageKey);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
 export default function AI() {
+  const { user } = useAuth();
+  const userScope = user?.id || user?.email || 'guest';
+  const studyChatKey = `${STUDY_CHAT_KEY_BASE}:${userScope}`;
+  const taskChatKey = `${TASK_CHAT_KEY_BASE}:${userScope}`;
+
   const [message, setMessage] = useState('');
-  const [studyChat, setStudyChat] = useState(() => loadStoredChat(STUDY_CHAT_KEY));
-  const [taskChat, setTaskChat] = useState(() => loadStoredChat(TASK_CHAT_KEY));
+  const [studyChat, setStudyChat] = useState([]);
+  const [taskChat, setTaskChat] = useState([]);
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [mode, setMode] = useState('study');
-  const [taskReply, setTaskReply] = useState('');
   const [createdTasks, setCreatedTasks] = useState([]);
   const [taskError, setTaskError] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const studyBottomRef = useRef(null);
+  const taskBottomRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem(STUDY_CHAT_KEY, JSON.stringify(studyChat));
-  }, [studyChat]);
+    setStudyChat(loadStoredChat(studyChatKey));
+  }, [studyChatKey]);
 
   useEffect(() => {
-    localStorage.setItem(TASK_CHAT_KEY, JSON.stringify(taskChat));
-  }, [taskChat]);
+    setTaskChat(loadStoredChat(taskChatKey));
+  }, [taskChatKey]);
+
+  useEffect(() => {
+    sessionStorage.setItem(studyChatKey, JSON.stringify(studyChat));
+  }, [studyChat, studyChatKey]);
+
+  useEffect(() => {
+    sessionStorage.setItem(taskChatKey, JSON.stringify(taskChat));
+  }, [taskChat, taskChatKey]);
+
+  useEffect(() => {
+    if (mode !== 'study') return;
+    studyBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [studyChat, isThinking, mode]);
+
+  useEffect(() => {
+    if (mode !== 'tasks') return;
+    taskBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [taskChat, isThinking, mode]);
 
   const postTaskAssistant = async (text, history) => {
     const token = localStorage.getItem('studypal_token');
@@ -45,10 +81,10 @@ export default function AI() {
 
   const ask = async (e) => {
     e.preventDefault();
-    const text = message;
+    const text = message.trim();
+    if (!text) return;
     setMessage('');
     setTaskError('');
-    setTaskReply('');
     setCreatedTasks([]);
     setIsThinking(true);
 
@@ -84,14 +120,33 @@ export default function AI() {
 
     try {
       const res = await postTaskAssistant(text, taskHistory);
-      setTaskReply(res.reply || 'Task plan ready.');
+      const reply = res.reply || 'Task plan ready.';
+      setTaskChat((items) => [...items, { role: 'ai', text: reply }]);
       setCreatedTasks(res.created_tasks || []);
     } catch (error) {
-      setTaskError(error?.message || 'Could not generate task plan.');
+      const errorText = error?.message || 'Could not generate task plan.';
+      setTaskError(errorText);
+      setTaskChat((items) => [...items, { role: 'ai', text: errorText }]);
     } finally {
       setIsThinking(false);
     }
   };
+
+  const clearConversation = () => {
+    if (mode === 'study') {
+      setStudyChat([]);
+      sessionStorage.removeItem(studyChatKey);
+      return;
+    }
+
+    setTaskChat([]);
+    setCreatedTasks([]);
+    setTaskError('');
+    sessionStorage.removeItem(taskChatKey);
+  };
+
+  const activeChat = mode === 'study' ? studyChat : taskChat;
+  const starters = mode === 'study' ? STUDY_STARTERS : TASK_STARTERS;
 
   return (
     <div className="grid gap-6">
@@ -120,43 +175,83 @@ export default function AI() {
         </div>
       </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
-        <Card>
-          {mode === 'study' ? (
-            <>
-              <div className="grid min-h-[420px] content-start gap-3">
-                {studyChat.map((item, index) => <div key={index} className={`max-w-[80%] rounded-2xl p-3 text-sm ${item.role === 'you' ? 'ml-auto bg-primary text-white' : 'bg-slate-100 dark:bg-gray-950'}`}>{item.text}</div>)}
-                {isThinking && (
-                  <div className="max-w-[80%] rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                    <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-primary align-middle" />
-                    AI is thinking...
-                  </div>
-                )}
+        <Card className="!p-0 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{mode === 'study' ? 'Study Assistant' : 'Task Planner Assistant'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{mode === 'study' ? 'Ask anything, summarize, or quiz yourself.' : 'Describe your goal and get actionable tasks.'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={clearConversation}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-gray-500 transition hover:bg-slate-100 hover:text-gray-700 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            >
+              <Trash2 size={14} />
+              Clear chat
+            </button>
+          </div>
+
+          <div className="h-[420px] overflow-y-auto bg-slate-50/70 px-5 py-4 dark:bg-gray-950/40">
+            {activeChat.length === 0 && !isThinking && (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                <div className="mb-3 flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-100">
+                  <Sparkles size={15} className="text-primary" />
+                  Try one of these prompts
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {starters.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      onClick={() => setMessage(starter)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <form onSubmit={ask} className="mt-4 flex gap-3">
-                <input className="input" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ask for study help..." required disabled={isThinking} />
-                <Button disabled={isThinking}>{isThinking ? 'Thinking...' : <Send size={16} />}</Button>
-              </form>
-            </>
-          ) : (
-            <>
-              <div className="grid min-h-[280px] content-start gap-3">
-                {taskChat.map((item, index) => (
-                  <div key={index} className={`max-w-[80%] rounded-2xl p-3 text-sm ${item.role === 'you' ? 'ml-auto bg-primary text-white' : 'bg-slate-100 dark:bg-gray-950'}`}>
-                    {item.text}
+            )}
+
+            <div className="grid content-start gap-3">
+              {activeChat.map((item, index) => (
+                <div key={index} className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${item.role === 'you' ? 'ml-auto bg-primary text-white' : 'bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100'}`}>
+                  <div className={`mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider ${item.role === 'you' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {item.role === 'you' ? 'You' : <><Bot size={12} /> AI</>}
                   </div>
-                ))}
-                {isThinking && (
-                  <div className="max-w-[80%] rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                    <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-primary align-middle" />
-                    Task manager is thinking...
-                  </div>
-                )}
-              </div>
+                  <p className="whitespace-pre-wrap">{item.text}</p>
+                </div>
+              ))}
+              {isThinking && (
+                <div className="max-w-[85%] rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                  <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-primary align-middle" />
+                  {mode === 'study' ? 'AI is thinking...' : 'Task manager is planning...'}
+                </div>
+              )}
+              {mode === 'study' ? <div ref={studyBottomRef} /> : <div ref={taskBottomRef} />}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 px-5 py-4 dark:border-gray-800">
+            <form onSubmit={ask} className="flex gap-3">
+              <input
+                className="input"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder={mode === 'study' ? 'Ask for study help...' : 'Describe the project you want to break down...'}
+                required
+                disabled={isThinking}
+              />
+              <Button disabled={isThinking}>{isThinking ? 'Thinking...' : <Send size={16} />}</Button>
+            </form>
+          </div>
+
+          {mode === 'tasks' && (
+            <div className="border-t border-slate-200 px-5 py-4 dark:border-gray-800">
               <div className="grid gap-4">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-                  Describe a project idea, for example: build a landing page, finish a portfolio, or launch an assignment feature. The agent will break it into tasks and create them.
+                  Describe a project idea, for example: build a landing page, finish a portfolio, or launch an assignment feature. The agent will break it into tasks.
                 </div>
-                {taskReply && <div className="rounded-2xl bg-primary px-4 py-3 text-sm text-white">{taskReply}</div>}
                 {taskError && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-200">{taskError}</div>}
 
                 {createdTasks.length > 0 && (
@@ -176,11 +271,7 @@ export default function AI() {
                   </div>
                 )}
               </div>
-              <form onSubmit={ask} className="mt-4 flex gap-3">
-                <input className="input" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Describe the project you want to break down..." required disabled={isThinking} />
-                <Button disabled={isThinking}>{isThinking ? 'Thinking...' : <Send size={16} />}</Button>
-              </form>
-            </>
+            </div>
           )}
         </Card>
         {mode === 'study' ? (
