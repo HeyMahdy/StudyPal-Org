@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const { initDb } = require('./config/database');
+const { purgeLegacySeededNotes } = require('./services/notesService');
 const { requireAuth } = require('./middleware/auth');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
@@ -52,7 +53,8 @@ app.use(notFound);
 app.use(errorHandler);
 
 initDb()
-  .then(() => {
+  .then(async () => {
+    await purgeLegacySeededNotes();
     app.listen(port, () => {
       console.log(`StudyPal API running on http://localhost:${port}`);
     });

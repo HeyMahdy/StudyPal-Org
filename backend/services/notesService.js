@@ -110,6 +110,49 @@ async function seedNotesGlobally() {
 }
 
 /**
+ * Removes legacy auto-seeded sample notes for users.
+ * A user is cleaned only if all sample note signatures are present.
+ * @returns {Promise<number>} - Total number of sample notes removed
+ */
+async function purgeLegacySeededNotes() {
+  try {
+    const users = await all('SELECT id FROM users', []);
+    const signatures = SAMPLE_NOTES.map((note) => ({ title: note.title, tags: note.tags }));
+    let removedCount = 0;
+
+    for (const user of users) {
+      const rows = await all(
+        'SELECT id, title, COALESCE(tags, "") as tags FROM notes WHERE user_id = ?',
+        [user.id]
+      );
+      if (!rows.length) continue;
+
+      const hasAllSampleNotes = signatures.every((signature) =>
+        rows.some((row) => row.title === signature.title && row.tags === signature.tags)
+      );
+      if (!hasAllSampleNotes) continue;
+
+      for (const signature of signatures) {
+        const result = await run(
+          'DELETE FROM notes WHERE user_id = ? AND title = ? AND COALESCE(tags, "") = ?',
+          [user.id, signature.title, signature.tags]
+        );
+        removedCount += result.changes || 0;
+      }
+    }
+
+    if (removedCount > 0) {
+      console.log(`[StudyPal] Removed ${removedCount} legacy seeded notes`);
+    }
+
+    return removedCount;
+  } catch (err) {
+    console.error('[StudyPal] Error purging legacy seeded notes:', err.message);
+    return 0;
+  }
+}
+
+/**
  * Get all sample notes (useful for API endpoints)
  * @returns {Array} - Array of sample notes
  */
@@ -120,5 +163,6 @@ function getSampleNotes() {
 module.exports = {
   seedNotesIfEmpty,
   seedNotesGlobally,
+  purgeLegacySeededNotes,
   getSampleNotes
 };

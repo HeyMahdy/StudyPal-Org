@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import agentApi from '../services/agentApi';
 
 export default function Notes() {
+  const { user } = useAuth();
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState('');
   const [active, setActive] = useState({ title: '', content: '', tags: '' });
@@ -23,8 +25,22 @@ export default function Notes() {
   const [isTutorLoading, setIsTutorLoading] = useState(false);
   const [historyPayload, setHistoryPayload] = useState(null);
 
-  const load = () => api.get(`/notes?search=${encodeURIComponent(search)}`).then((res) => setNotes(res.data.notes));
-  useEffect(() => { load(); }, [search]);
+  const load = () =>
+    api
+      .get(`/notes?search=${encodeURIComponent(search)}`)
+      .then((res) => {
+        const fetchedNotes = Array.isArray(res?.data?.notes) ? res.data.notes : [];
+        const currentUserId = Number(user?.id);
+        const safeNotes = Number.isFinite(currentUserId)
+          ? fetchedNotes.filter((note) => Number(note.user_id) === currentUserId)
+          : [];
+        setNotes(safeNotes);
+      })
+      .catch(() => setNotes([]));
+
+  useEffect(() => {
+    load();
+  }, [search, user?.id]);
 
   const handleHistoryClick = (savedNote) => {
     let parsedContent = null;

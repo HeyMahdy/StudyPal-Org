@@ -2,9 +2,11 @@ import { Check, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 export default function NotesContextPanel({ selectedNotes, onNotesChange }) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -14,7 +16,12 @@ export default function NotesContextPanel({ selectedNotes, onNotesChange }) {
       try {
         setLoading(true);
         const res = await api.get('/notes?search=');
-        setNotes(res.data.notes || []);
+        const fetchedNotes = Array.isArray(res?.data?.notes) ? res.data.notes : [];
+        const currentUserId = Number(user?.id);
+        const safeNotes = Number.isFinite(currentUserId)
+          ? fetchedNotes.filter((note) => Number(note.user_id) === currentUserId)
+          : [];
+        setNotes(safeNotes);
       } catch (error) {
         console.error('Failed to fetch notes:', error);
         setNotes([]);
@@ -24,7 +31,7 @@ export default function NotesContextPanel({ selectedNotes, onNotesChange }) {
     };
 
     fetchNotes();
-  }, []);
+  }, [user?.id]);
 
   const filteredNotes = useMemo(() => {
     if (!search.trim()) return notes;

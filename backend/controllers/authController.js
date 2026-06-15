@@ -2,7 +2,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { get, run } = require('../config/database');
 const { sendSuccess } = require('../utils/response');
-const { seedNotesIfEmpty } = require('../services/notesService');
 
 function signUser(user) {
   return jwt.sign({ id: user.id, email: user.email, name: user.name }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -17,12 +16,7 @@ async function register(req, res, next) {
     const hash = await bcrypt.hash(password, 12);
     const result = await run('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, email.toLowerCase(), hash]);
     const user = { id: result.id, name, email: email.toLowerCase() };
-    
-    // Seed sample notes for new user (non-blocking)
-    seedNotesIfEmpty(user.id).catch((err) => {
-      console.error(`[StudyPal] Failed to seed notes for new user ${user.id}:`, err.message);
-    });
-    
+
     sendSuccess(res, { user, token: signUser(user) }, 'Account created', 201);
   } catch (err) {
     next(err);

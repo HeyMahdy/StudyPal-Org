@@ -4,10 +4,14 @@ const { seedNotesIfEmpty } = require('../services/notesService');
 
 async function listNotes(req, res, next) {
   try {
+    const userId = Number(req.user?.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ success: false, data: {}, message: 'Invalid user token' });
+    }
     const search = `%${req.query.search || ''}%`;
     const notes = await all(
       `SELECT * FROM notes WHERE user_id = ? AND (title LIKE ? OR content LIKE ? OR tags LIKE ?) ORDER BY updated_at DESC`,
-      [req.user.id, search, search, search]
+      [userId, search, search, search]
     );
     sendSuccess(res, { notes }, 'Notes loaded');
   } catch (err) {
